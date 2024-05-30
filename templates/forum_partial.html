@@ -1,0 +1,6 @@
+<!-- forum_partial.html -->
+<ul id="message-list">
+    {% for username, message in messages %}
+        <li><strong>{{ username }}</strong>: {{ message }}</li>
+    {% endfor %}
+</ul>

@@ -1,0 +1,56 @@
+<h1>Welcome, {{ username }}!</h1>
+
+<h2>Forum</h2>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function(){
+        function fetchMessages(){
+            var selected_forum = $("form").data("forum");
+            $.ajax({
+                url: "{{ url_for('forum', selected_forum=selected_forum) }}",
+                method: "GET",
+                success: function(response){
+                    $('#message-list').html(response);
+                }
+            });
+        }
+
+        setInterval(fetchMessages, 5000); // Fetch messages every 5 seconds
+
+        $('#message-form').submit(function(event){
+            event.preventDefault();
+            var message = $('textarea[name="message"]').val();
+            var selected_forum = $("form").data("forum");
+            $.ajax({
+                url: "{{ url_for('forum', selected_forum=selected_forum) }}",
+                method: "POST",
+                data: {message: message},
+                success: function(){
+                    fetchMessages(); // Fetch messages after sending a message
+                }
+            });
+            $('textarea[name="message"]').val('');
+        });
+    });
+</script>
+
+<form method="post" id="message-form" data-forum="{{ selected_forum }}">
+    <p>
+        <select name="selected_forum" onchange="this.form.submit()">
+            <option value="Forum1" {% if selected_forum == 'Forum1' %}selected{% endif %}>Forum1</option>
+            <option value="Forum2" {% if selected_forum == 'Forum2' %}selected{% endif %}>Forum2</option>
+        </select>
+    </p>
+    <p><textarea name="message" rows="4" cols="50" placeholder="Enter your message"></textarea></p>
+    <p><input type="submit" value="Post"></p>
+    <p><input type="submit" value="Reset"></p>
+</form>
+
+<h3>Messages:</h3>
+<ul id="message-list">
+    {% for username, message in messages %}
+        <li><strong>{{ username }}</strong>: {{ message }}</li>
+    {% endfor %}
+</ul>
+
+<p><a href="{{ url_for('index') }}">Back to Home</a></p>
