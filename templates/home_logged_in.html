@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Chat App</title>
+    <title>Home</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
-    
+
 </head>
 <script type="text/javascript" charset="utf-8">
     var socket = io();
@@ -12,46 +12,28 @@
     socket.on('inactive_warning', function(data) {
         console.log('Received inactive warning:', data.message);
         // Display inactive warning message
+        window.alert("inactive_warning");
     });
     
     socket.on('force_logout', function(data) {
         console.log('Received force logout:', data.message);
         // Display force logout message
+        window.alert("force_logout");
     });
 </script>
 <body>
-
-    <h1>Welcome, {{ username }}!</h1>
-    
-    <p><a href="{{ url_for('forum') }}">Go to Forum</a></p>
-    
-    <h2>Active Users:</h2>
+    <h1>Welcome to our website, {{ username }}!</h1>
+    <p>Active Users:</p>
     <ul>
         {% for user in active_users %}
-            <li>{{ user }}</li>
+            <li>{{ user.username }}</li>
         {% endfor %}
     </ul>
-    
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        $(document).ready(function(){
-
-            var socket = io();
-
-         
-            socket.on('inactive_warning', function(data) {
-                alert(data.message); 
-            });
-
-            
-            socket.on('force_logout', function(data) {
-                alert(data.message); 
-                
-            });
-        });
-    </script>
+    <p>Please choose an option:</p>
+    <ul>
+        <li><a href="/logout">Logout</a></li>
+        <li><a href="/forum?selected_forum=Forum1">Forum1</a></li>
+        <li><a href="/forum?selected_forum=Forum2">Forum2</a></li>
+    </ul>
 </body>
 </html>

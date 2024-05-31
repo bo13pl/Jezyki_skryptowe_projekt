@@ -2,7 +2,23 @@
 <html>
 <head>
     <title>Chat App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
 </head>
+
+<script type="text/javascript" charset="utf-8">
+    var socket = io();
+    socket.emit('check_inactivity'); // Emit check_inactivity event to start the inactivity check
+    
+    socket.on('inactive_warning', function(data) {
+        console.log('Received inactive warning:', data.message);
+        // Display inactive warning message
+    });
+    
+    socket.on('force_logout', function(data) {
+        console.log('Received force logout:', data.message);
+        // Display force logout message
+    });
+</script>
 <body>
     <h1>Welcome, {{ username }}!</h1>
     
