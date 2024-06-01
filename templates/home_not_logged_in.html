@@ -11,13 +11,13 @@
     socket.on('inactive_warning', function(data) {
         console.log('Received inactive warning:', data.message);
         // Display inactive warning message
-        window.alert("inactive_warning");
+        alert(data.message); 
     });
     
     socket.on('force_logout', function(data) {
         console.log('Received force logout:', data.message);
         // Display force logout message
-        window.alert("force_logout");
+        alert(data.message); 
     });
 </script>
 <body>

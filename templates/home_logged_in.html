@@ -12,21 +12,21 @@
     socket.on('inactive_warning', function(data) {
         console.log('Received inactive warning:', data.message);
         // Display inactive warning message
-        window.alert("inactive_warning");
+        alert(data.message); 
     });
     
     socket.on('force_logout', function(data) {
         console.log('Received force logout:', data.message);
         // Display force logout message
-        window.alert("force_logout");
+        alert(data.message); 
     });
 </script>
 <body>
-    <h1>Welcome to our website, {{ username }}!</h1>
+    <h1>Welcome, <a href="{{ url_for('profile', username=username) }}">{{ username }}</a>!</h1>
     <p>Active Users:</p>
     <ul>
         {% for user in active_users %}
-            <li>{{ user.username }}</li>
+            <li><a href="{{ user.profile_url }}">{{ user.username }}</a></li>
         {% endfor %}
     </ul>
     <p>Please choose an option:</p>

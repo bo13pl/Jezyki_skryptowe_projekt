@@ -1,4 +1,4 @@
-<h1>Welcome, {{ username }}!</h1>
+<h1>Welcome, <a href="{{ user.profile_url }}">{{ user.username }}</a>!</h1>
 
 <h2>Forum</h2>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -64,8 +64,8 @@
 
 <h3>Messages:</h3>
 <ul id="message-list">
-    {% for username, message in messages %}
-        <li><strong>{{ username }}</strong>: {{ message }}</li>
+    {%  for message in messages  %}
+        <li><a href="{{message.profile_url }}">{{ message.username }}</a></strong>: {{ message.message }}</li>
     {% endfor %}
 </ul>
 

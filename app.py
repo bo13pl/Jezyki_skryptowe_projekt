@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, send_from_directory, url_for, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -16,17 +16,22 @@ migrate = Migrate(app, db)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # User model
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    last_activity = db.Column(db.DateTime, default=datetime.utcnow())  
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+    birthdate = db.Column(db.Date, nullable=True)  # New field for birthdate
+    gender = db.Column(db.String(10), nullable=True)  # New field for gender
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, birthdate=None, gender=None):
         self.username = username
         self.password = generate_password_hash(password)
-        self.last_activity =datetime.utcnow()
+        self.last_activity = datetime.utcnow()
+        self.birthdate = birthdate
+        self.gender = gender
 
 # Create tables
 with app.app_context():
@@ -44,17 +49,72 @@ def update_last_activity():
                 user.last_activity =datetime.utcnow()
                 db.session.commit()
 
+
+@app.route('/profile/<username>', methods=['GET', 'POST'])
+def profile(username):
+    if 'username' in session and User.query.filter_by(username=session['username']).first().is_active:
+        user = User.query.filter_by(username=username).first()
+        User.query.filter_by(username=session['username']).first().last_activity = datetime.utcnow()
+
+        if not user:
+            return "User not found", 404
+
+        is_owner = session.get('username') == username
+        name_incorrect = False
+
+        if request.method == 'POST' and is_owner:
+            new_username = request.form.get('username')
+            new_password = request.form.get('password')
+            new_birthdate = request.form.get('birthdate')
+            new_gender = request.form.get('gender')
+
+            if new_username:
+                existing_user = User.query.filter_by(username=new_username).first()
+                if existing_user and new_username!= user.username:
+                    name_incorrect = True
+                else:
+                    user.username = new_username
+                    session['username'] = new_username
+
+            # Update other user information
+            if new_password:
+                user.password = generate_password_hash(new_password)
+                app.logger.info(f'User {user.username} new pass {user.password}')
+            if new_birthdate:
+                new_birthdate = datetime.strptime(new_birthdate, '%Y-%m-%d').date()
+                user.birthdate = new_birthdate
+            if new_gender:
+                user.gender = new_gender
+
+            db.session.commit()
+
+            if name_incorrect:
+                return render_template('profile.html', user=user, is_owner=is_owner, name_incorrect=name_incorrect)
+
+            # Redirect to the updated profile page
+            return redirect(url_for('profile', username=user.username))
+
+        return render_template('profile.html', user=user, is_owner=is_owner, name_incorrect=name_incorrect)
+    else:
+        return redirect(url_for('login'))
 @app.route('/')
 def home():
-    if 'username':
-        active_users = User.query.filter_by(is_active=True).all()
-        user_logged = 'username' in session and User.query.filter_by(username=session['username']).first().is_active
+    active_users = User.query.filter_by(is_active=True).all()
+    if 'username' in session:
+        
+        user_logged = User.query.filter_by(username=session['username']).first().is_active
         
         if user_logged:
-            User.query.filter_by(username=session['username']).first().last_activity =datetime.utcnow()
-            return render_template('home_logged_in.html', username=session['username'], active_users=active_users)
+            user = User.query.filter_by(username=session['username']).first()
+            user.last_activity = datetime.utcnow()
+            db.session.commit()
+            return render_template('home_logged_in.html', 
+                                username=session['username'], 
+                                active_users=[{'username': user.username, 'profile_url': url_for('profile', username=user.username)} for user in active_users])
         else:
             return render_template('home_not_logged_in.html', active_user_count=len(active_users))
+    elif not active_users:
+        return render_template('home_not_logged_in.html', active_user_count=0)
     else:
         return render_template('home_not_logged_in.html', active_user_count=len(active_users))
 
@@ -75,7 +135,11 @@ def login():
                 return redirect(url_for('home'))
             
             else:
-                error = 'Invalid username or password. Please try again.'
+                if not user:
+                    error = f'Invalid username {username}. Please try again {user.username}.'
+                else:
+                    error = f'Invalid password {password}. Please try again {user.password}.'
+                
                 return render_template('login.html', error=error)
         
         return render_template('login.html')
@@ -95,13 +159,18 @@ def logout():
 
 @app.route('/index')
 def index():
-    if 'username':
-        if 'username' not in session or not User.query.filter_by(username=session['username']).first().is_active:
+     if 'username':
+        if 'username' in session and User.query.filter_by(username=session['username']).first().is_active:
+            active_users = User.query.filter_by(is_active=True).all()
+            current_user = User.query.filter_by(username=session['username']).first()
+            current_user.last_activity = datetime.utcnow()
+            db.session.commit()
+            return render_template('index.html', 
+                                username=session['username'], 
+                                active_users=[{'username': user.username, 'profile_url': url_for('profile', username=user.username)} for user in active_users])
+        elif 'username' not in session or not User.query.filter_by(username=session['username']).first().is_active:
             return redirect(url_for('login'))
-        active_users = User.query.filter_by(is_active=True).all()
-        User.query.filter_by(username=session['username']).first().last_activity =datetime.utcnow()
-        return render_template('index.html', username=session['username'], active_users=[user.username for user in active_users])
-
+    
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if 'username':
@@ -144,11 +213,16 @@ def forum():
             messages = forum_messages.get(selected_forum, [])
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return render_template('forum_partial.html', messages=messages)
+                return render_template('forum_partial.html', messages=[{'username': username, 'profile_url': url_for('profile', username=username), 'message':message} for username, message in messages])
             else:
-                return render_template('forum.html', username=session.get('username'), messages=messages, selected_forum=selected_forum)
+                return render_template('forum.html',
+                       user={'username': session.get('username'), 'profile_url': url_for('profile', username=session.get('username'))},
+                       messages=[{'username': username, 'profile_url': url_for('profile', username=username), 'message': message} for username, message in messages],
+                       selected_forum=selected_forum)
         else:
             return render_template('not_logged_in.html')
+
+
 
 @socketio.on('connect')
 def handle_connect():
@@ -160,7 +234,9 @@ def handle_connect():
             join_room(username)
             user.last_activity =datetime.utcnow()
             db.session.commit()
-
+@app.route('/socket.io/socket.io.js')
+def send_socketio():
+    return send_from_directory('D:\Jezyki_skryptowe_projekt\static\socket.io.js', 'socket.io.js')
 @socketio.on('message')
 def handle_message(data):
     if 'username':
@@ -187,29 +263,32 @@ def check_inactivity():
             # Find users who have been inactive for more than 4 minutes but less than 5 minutes
             inactive_warning_users = User.query.filter(
                 User.is_active == True,
-                User.last_activity < now - timedelta(minutes=1),
+                User.last_activity < now - timedelta(minutes=20),
             ).all()
+            app.logger.info(f'Sending inactive warning to this amount of users {len(inactive_warning_users)}')
             # Send warnings to these users
             for user in inactive_warning_users:
                 app.logger.info(f'Sending inactive warning to {user.username}')
                 socketio.emit('inactive_warning', {'message': f'You, {user.username}, will be logged out due to inactivity in 1 minute'}, room=user.username)
                 app.logger.info(f'Inactive warning sent to {user.username}')
-            time.sleep(60)
+            time.sleep(600)
             inactive_users = []
             for user in inactive_warning_users:
-                if user.is_active == True and user.last_activity < now - timedelta(minutes=1):
+                if user.is_active == True and user.last_activity < now - timedelta(minutes=20):
                     inactive_users.append(user) 
             # Log out these users
+            app.logger.info(f'Logged out due to inactivity amount of users {len(inactive_users)}')
             user_name_chec = ""
             for user in inactive_users:
-                if(user.is_active):
+                if(user.is_active and user.last_activity < now - timedelta(minutes=20)):
                     socketio.emit('force_logout', {'message': f'You, {user.username}, have been logged out due to inactivity'}, room=user.username)
                     app.logger.info(f'User {user.username} logged out due to inactivity')
                     user.is_active = False
                     db.session.commit()
 
         # Sleep for 1 minute before running the check again
-        time.sleep(60)
+        time.sleep(600)
+
 if __name__ == '__main__':
     thread = threading.Thread(target=check_inactivity)
     thread.daemon = True

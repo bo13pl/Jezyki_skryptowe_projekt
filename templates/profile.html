@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Profile of {{ user.username }}</h1>
+
+    <p>Last Activity: {{ user.last_activity }}</p>
+    <p>Date of Birth: {{ user.birthdate }}</p>
+    <p>Gender: {{ user.gender }}</p>
+    
+    {% if is_owner %}
+    <h2>Edit Your Information:</h2>
+    {% if name_incorrect %}
+    <p style="color: red;">Username is incorrect or already taken.</p>
+    {% endif %}
+    <form id="edit-form" method="post" action="{{ url_for('profile', username=user.username) }}">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" value="{{ user.username }}"><br>
+        <label for="password">New Password:</label>
+        <input type="password" id="password" name="password"><br>
+        <label for="birthdate">Birthdate:</label>
+        <input type="date" id="birthdate" name="birthdate" value="{{ user.birthdate }}"><br>
+        <label for="gender">Gender:</label>
+        <select id="gender" name="gender">
+            <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+            <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+            <option value="other" {% if user.gender == 'other' %}selected{% endif %}>Other</option>
+        </select><br>
+        <button type="submit">Save Changes</button>
+    </form>
+    {% endif %}
+    <p><a href="{{ url_for('forum') }}">Go to Forum</a></p>
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+
+    <script type="text/javascript">
+        var socket = io();
+    
+        // Emitting the 'check_inactivity' event to start the inactivity check
+        socket.emit('check_inactivity');
+
+        // Handling the 'inactive_warning' event from the server
+        socket.on('inactive_warning', function(data) {
+            alert(data.message); 
+        });
+
+        // Handling the 'force_logout' event from the server
+        socket.on('force_logout', function(data) {
+            alert(data.message); 
+        });
+
+        // Handling the 'not_unique_name' event from the server
+        socket.on('not_unique_name', function(data) {
+            // Display the warning message next to the username field
+            alert(data.message); 
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('edit-form').addEventListener('submit', function(event) {
+                var birthdate = new Date(document.getElementById('birthdate').value);
+                var today = new Date();
+                var age = today.getFullYear() - birthdate.getFullYear();
+                var month = today.getMonth() - birthdate.getMonth();
+                if (month < 0 || (month === 0 && today.getDate() < birthdate.getDate())) {
+                    age--;
+                }
+                if (age < 18) {
+                    alert('You must be at least 18 years old.');
+                    event.preventDefault();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
