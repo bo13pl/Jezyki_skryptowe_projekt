@@ -257,24 +257,26 @@ def check_inactivity():
             now = datetime.utcnow()
             inactive_warning_users = User.query.filter(
                 User.is_active == True,
-                User.last_activity < now - timedelta(minutes=4),
-                User.last_activity >= now - timedelta(minutes=5)
+                User.last_activity < now - timedelta(minutes=30),
             ).all()
-
+            sended =[]
             for user in inactive_warning_users:
-                socketio.emit('inactive_warning', {'message': f'You, {user.username}, will be logged out due to inactivity in 1 minute'}, room=user.username)
+                if user not in sended:
+                    sended.append(user)
+                    socketio.emit('inactive_warning', {'message': f'You, {user.username}, will be logged out due to inactivity in 1 minute'}, room=user.username)
 
             time.sleep(60)
 
             inactive_users = User.query.filter(
                 User.is_active == True,
-                User.last_activity < now - timedelta(minutes=5)
+                User.last_activity < now - timedelta(minutes=30)
             ).all()
 
             for user in inactive_users:
-                user.is_active = False
-                db.session.commit()
-                leave_room(user.username)
+                if user.is_active:
+                    user.is_active = False
+                    db.session.commit()
+                    leave_room(user.username)
 
 @app.route('/forum/<username1>/<username2>', methods=['GET', 'POST'])
 def chat_priv(username1, username2):
