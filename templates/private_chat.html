@@ -1,0 +1,41 @@
+<!-- templates/private_chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Chat</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const socket = io();
+
+            socket.emit('join_private_chat', { recipient: "{{ recipient }}" });
+
+            document.getElementById('sendMessage').addEventListener('click', () => {
+                const message = document.getElementById('message').value;
+                socket.emit('private_message', {
+                    recipient: "{{ recipient }}",
+                    message: message
+                });
+                document.getElementById('message').value = '';
+            });
+
+            socket.on('new_private_message', (data) => {
+                const messagesDiv = document.getElementById('messages');
+                messagesDiv.innerHTML += `<p><strong>${data.username}:</strong> ${data.message}</p>`;
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Private Chat with {{ recipient }}</h1>
+    <div id="messages">
+        {% for msg in messages %}
+            <p><strong>{{ msg.username }}:</strong> {{ msg.message }}</p>
+        {% endfor %}
+    </div>
+    <input type="text" id="message" placeholder="Type your message here...">
+    <button id="sendMessage">Send</button>
+</body>
+</html>

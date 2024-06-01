@@ -111,7 +111,7 @@ def profile(username):
 
         return redirect(url_for('profile', username=user.username))
 
-    return render_template('profile.html', user=user, is_owner=is_owner, name_incorrect=name_incorrect)
+    return render_template('profile.html', user=user, is_owner=is_owner, name_incorrect=name_incorrect, my_name=session.get('username'))
 
 @app.route('/')
 def home():
@@ -276,6 +276,53 @@ def check_inactivity():
                 db.session.commit()
                 leave_room(user.username)
 
+@app.route('/forum/<username1>/<username2>', methods=['GET', 'POST'])
+def chat_priv(username1, username2):
+    # Sort usernames to ensure consistent URL structure
+    sorted_usernames = sorted([username1, username2])
+    if (username1, username2) != (sorted_usernames[0], sorted_usernames[1]):
+        return redirect(url_for('chat_priv', username1=sorted_usernames[0], username2=sorted_usernames[1]))
+
+    user1 = User.query.filter_by(username=sorted_usernames[0]).first()
+    user2 = User.query.filter_by(username=sorted_usernames[1]).first()
+    
+    if not user1 or not user2:
+        return "User not found", 404
+    
+    current_username = session.get('username')
+    is_owner = current_username in sorted_usernames
+    
+    if not is_owner:
+        return render_template('not_logged_in.html'), 403
+    
+    selected_forum = request.args.get(f'selected_forum_{sorted_usernames[0]}_{sorted_usernames[1]}', f'selected_forum_{sorted_usernames[0]}_{sorted_usernames[1]}')
+    messages = read_messages()
+
+    if request.method == 'POST':
+        message = request.form['message']
+        
+        if selected_forum not in messages:
+            messages[selected_forum] = []
+        
+        messages[selected_forum].append((current_username, message))
+        write_messages(messages)
+        return '', 204  # No Content
+
+    forum_messages = messages.get(selected_forum, [])
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('forum_partial.html', messages=[
+            {'username': username, 'profile_url': url_for('profile', username=username), 'message': message}
+            for username, message in forum_messages
+        ])
+    else:
+        return render_template('forum.html',
+                               user={'username': current_username, 'profile_url': url_for('profile', username=current_username)},
+                               messages=[
+                                   {'username': username, 'profile_url': url_for('profile', username=username), 'message': message}
+                                   for username, message in forum_messages
+                               ],
+                               selected_forum=selected_forum)
 
 if __name__ == '__main__':
     thread = threading.Thread(target=check_inactivity)
