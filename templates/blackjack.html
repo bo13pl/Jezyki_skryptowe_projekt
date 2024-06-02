@@ -7,7 +7,15 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Blackjack {{user_name}}</h1>
+
+    <h1>Blackjack <a href="{{ user_profile_url }}">{{user_name}}</a></h1>
+    <div>
+        <h2>Dealer Hand</h2>
+        <div id="dealer-hand">{{dealer_hand}}</div>
+        <span>Value: {{dealer}}</span>
+    </div>
+    <button id="split-button">Split</button>
+
     <div id="player-hands">
         {% for i, hand in enumerate(player_hands) %}
         <div class="player-hand">
@@ -15,8 +23,6 @@
             <div id="player-hand-{{i}}">{{hand}}</div>
             <span>Value: {{hand.value}}</span>
             <button class="hit-button" data-hand-index="{{i}}">Hit</button>
-            
-            
         </div>
         {% endfor %}
     </div>
@@ -25,7 +31,6 @@
     
     {% for i, hand in enumerate(winner) %}
     <div>
-        
         <h2>{{hand}} </h2>
     </div>
     {% endfor %}
@@ -33,12 +38,11 @@
     {% if num_of_hands == 1 %}
     <h2>{{winner[0]}} </h2>
     {% endif %}
-    <div>
-        <h2>Dealer Hand</h2>
-        <div id="dealer-hand">{{dealer_hand}}</div>
-        <span>Value: {{dealer}}</span>
+    <div class="button-container">
+        <button onclick="location.href='/blackjack'">Go to Blackjack</button>
+        <button onclick="location.href='/index'">Go to Index</button>
     </div>
-    <button id="split-button">Split</button>
+    
     <script>
     $(document).ready(function() {
         $(".hit-button").click(function() {
@@ -74,5 +78,111 @@
         });
     });
     </script>
+
+    <style>
+body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            text-align: center; /* Align buttons to center */
+        }
+
+h1 {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.player-hand {
+    border: 2px solid #333;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.player-hand h2 {
+    margin-top: 0;
+}
+
+#player-hands {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+#player-hands .player-hand {
+    margin-right: 20px;
+}
+
+button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#dealer-hand {
+    border: 2px solid #333;
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 20px;
+}
+
+span {
+    display: block;
+    margin-top: 10px;
+}
+
+.winner {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#split-button {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#split-button:hover {
+    background-color: #218838;
+}
+
+
+        .button-container {
+            margin-top: 20px;
+        }
+
+        .button-container button {
+            display: inline-block;
+            margin: 0 10px; /* Add some spacing between buttons */
+            padding: 10px 20px;
+            background-color: beige; /* Beige color */
+            color: #000; /* Black text color */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-container button:hover {
+            background-color: #e6d7b9; /* Darker beige on hover */
+        }
+    </style>
 </body>
 </html>

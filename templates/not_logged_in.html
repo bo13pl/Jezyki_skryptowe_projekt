@@ -1,23 +1,65 @@
-<h1>Sorry you are not logged in</h1>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
-<script type="text/javascript" charset="utf-8">
-    var socket = io();
-    socket.emit('check_inactivity'); // Emit check_inactivity event to start the inactivity check
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sorry you are not logged in</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+</head>
+<body>
+    <h1>Sorry you are not logged in</h1>
     
-    socket.on('inactive_warning', function(data) {
-        console.log('Received inactive warning:', data.message);
-        // Display inactive warning message
-        window.alert("inactive_warning");
-    });
+    <script type="text/javascript" charset="utf-8">
+        var socket = io();
+        socket.emit('check_inactivity'); // Emit check_inactivity event to start the inactivity check
+        
+        socket.on('inactive_warning', function(data) {
+            console.log('Received inactive warning:', data.message);
+            // Display inactive warning message
+            window.alert("inactive_warning");
+        });
+        
+        socket.on('force_logout', function(data) {
+            console.log('Received force logout:', data.message);
+            // Display force logout message
+            window.alert("force_logout");
+        });
+    </script>
     
-    socket.on('force_logout', function(data) {
-        console.log('Received force logout:', data.message);
-        // Display force logout message
-        window.alert("force_logout");
-    });
-</script>
-            <p>Please choose an option:</p>
-            <ul>
-                <li><a href="/login">Login</a></li>
-                <li><a href="/register">Register</a></li>
-            </ul>
+    <p>Please choose an option:</p>
+    
+    <ul>
+        <li><a href="/login">Login</a></li>
+        <li><a href="/register">Register</a></li>
+    </ul>
+</body>
+<style>body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+h1 {
+    margin-top: 50px;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    margin-bottom: 10px;
+}
+
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+</style>
+
+</html>

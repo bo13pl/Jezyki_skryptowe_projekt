@@ -92,7 +92,6 @@ class Game:
         results = []
         i=1
         for hand in self.player_hands:
-            i+=1
             if self.is_bust(hand):
                 results.append(f'Hand {i} win Dealer')
             elif self.is_bust(self.dealer_hand):
@@ -103,6 +102,7 @@ class Game:
                 results.append(f'Hand {i} win Player')
             else:
                 results.append(f'Hand {i} Tie')
+            i+=1
         return results
 
     def split_hand(self, index):

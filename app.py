@@ -354,9 +354,9 @@ def blackjack():
         game_session['winner'].append(f'Hand 1 win Player')
         games.remove(game_session)
         return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
-                               winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                               winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
     return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
-                            dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                            dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
 
 @app.route('/blackjack/hit', methods=['POST'])
 def blackjack_hit():
@@ -369,18 +369,18 @@ def blackjack_hit():
     # Check if the player's turn has ended
     if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
         return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
-                                dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                                dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
     
     game.hit(game.player_hands[hand_index])
     if game.is_bust(game.player_hands[hand_index]):
-        game_session['winner'].append(f'Hand {hand_index} win Dealer')
+        game_session['winner'].append(f'Hand {hand_index + 1} win Dealer')
     elif game.is_blackjack(game.player_hands[hand_index]):
-        game_session['winner'].append(f'Hand {hand_index} win Player')
+        game_session['winner'].append(f'Hand {hand_index + 1} win Player')
 
     if len(game_session['winner']) == game_session['standed_hands']:
         games.remove(game_session)  # Clear the game session after finishing
     return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
-                            winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                            winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
 
 @app.route('/blackjack/stand', methods=['POST'])
 def blackjack_stand():
@@ -393,7 +393,7 @@ def blackjack_stand():
     # Check if the player's turn has ended
     if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
         return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
-                                dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                                dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
     
     game.dealer_plays()
     winners = game.check_winner()  # Assuming only one hand for simplicity
@@ -402,7 +402,7 @@ def blackjack_stand():
         games.remove(game_session)  # Clear the game session after finishing
     return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
                             dealer_hand=game.dealer_hand, winner=game_session['winner'], is_winner=bool(game_session['winner']),
-                              enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                              enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
 
 @app.route('/blackjack/split', methods=['POST'])
 def blackjack_split():
@@ -415,11 +415,11 @@ def blackjack_split():
         game.split_hand(0)
     except ValueError as e:
         return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
-                               error=str(e), enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                               error=str(e), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
     game_session['standed_hands'] *= 2
     session['game'] = game.to_dict()
     return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
-                            dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']))
+                            dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
 #todo:
 #   crypto to store games
 #   add money
