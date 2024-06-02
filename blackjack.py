@@ -85,7 +85,7 @@ class Game:
             'player_value': self.player_hand.value,
             'dealer_value': self.dealer_hand.value
         }
-    def clear_hends(self):
+    def clear_hands(self):
         self.dealer_hand = Hand()
         self.player_hand = Hand()
 

@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 from flask import Flask, render_template, request, redirect, send_from_directory, url_for, jsonify, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
@@ -327,42 +328,69 @@ def chat_priv(username1, username2):
                                    for username, message in forum_messages
                                ],
                                selected_forum=selected_forum)
+games = []
 
-game = Game()
+def find_latest_game_by_player(player_name):
+    filtered_games = [game for game in games if game['player'] == player_name]
+    if not filtered_games:
+        return None
+    filtered_games.sort(key=lambda x: x['datet'], reverse=True)
+    latest_game = filtered_games[0]
+    return latest_game
+
 @app.route('/blackjack')
 def blackjack():
     if 'username' not in session:
         return redirect(url_for('login'))
-    game.clear_hends()
-    game.deal_initial_cards() 
+    user = session['username']
+    game_session = {'game':  Game(), 'datet': datetime.utcnow(), 'player': user, 'winner': NULL}
+    games.append(game_session)
+    game = game_session['game']
+    game.clear_hands()
+    game.deal_initial_cards()
     session['game'] = game.to_dict()
-    return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand)
-
-
+    if game.is_blackjack(game.player_hand):
+        winner = 'Player'
+        games.remove(game_session)
+        return render_template('blackjack.html', user_name=user, player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
+                           winner = winner, is_winner = bool(winner))
+    return render_template('blackjack.html', user_name=user, player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
+                           )
 
 @app.route('/blackjack/hit', methods=['POST'])
 def blackjack_hit():
+    user = session['username']
+    game_session = find_latest_game_by_player(user)
+    if not game_session:
+        return redirect(url_for('blackjack'))  # Redirect if no game session found
+    game = game_session['game']
     game.hit(game.player_hand)
-
+    winner = None
     if game.is_bust(game.player_hand):
         winner = 'Dealer'
     elif game.is_blackjack(game.player_hand):
         winner = 'Player'
-    else:
-        winner = None
-    if bool(winner):
-        return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
-                           dealer_win = winner=='Dealer', player_win=winner=='Player')
-    else:
-        return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand)
+
+    if winner:
+        games.remove(game_session)  # Clear the game session after finishing
+    return render_template('blackjack.html', user_name=user, player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
+                           winner = winner, is_winner = bool(winner))
 
 @app.route('/blackjack/stand', methods=['POST'])
 def blackjack_stand():
+    user = session['username']
+    game_session = find_latest_game_by_player(user)
+    if not game_session:
+        return redirect(url_for('blackjack'))  # Redirect if no game session found
+    game = game_session['game']
     game.dealer_plays()
     winner = game.check_winner()
-    session.pop('game')
-    return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
-                           dealer_win = winner=='Dealer', player_win=winner=='Player')
+    if winner:
+        games.remove(game_session)  # Clear the game session after finishing
+    return render_template('blackjack.html', user_name=user, player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
+                           winner = winner, is_winner = bool(winner))
+
+
 #todo:
 #   crypto to store games
 #   add money

@@ -7,7 +7,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Blackjack</h1>
+    <h1>Blackjack {{user_name}}</h1>
     <div>
         <h2>Player Hand</h2>
         <div id="player-hand"></div>
@@ -23,11 +23,8 @@
         <span>{{dealer_hand}}</span>
     </div>
     <div>
-        {% if dealer_win %}
-        <h2>Dealer Win</h2>
-        {% endif %}
-        {% if player_win %}
-        <h2>Player Win</h2>
+        {% if is_winner %}
+        <h2>{{winner}} Win</h2>
         {% endif %}
     </div>        
     <button id="hit-button">Hit</button>
