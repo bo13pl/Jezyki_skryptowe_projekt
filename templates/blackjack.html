@@ -8,45 +8,66 @@
 </head>
 <body>
     <h1>Blackjack {{user_name}}</h1>
-    <div>
-        <h2>Player Hand</h2>
-        <div id="player-hand"></div>
-        <span>{{player}}</span>
-        <div id="player-value"></div>
-        <span>{{player_hand}}</span>
+    <div id="player-hands">
+        {% for i, hand in enumerate(player_hands) %}
+        <div class="player-hand">
+            <h2>Player Hand {{i + 1}}</h2>
+            <div id="player-hand-{{i}}">{{hand}}</div>
+            <span>Value: {{hand.value}}</span>
+            <button class="hit-button" data-hand-index="{{i}}">Hit</button>
+            
+            
+        </div>
+        {% endfor %}
     </div>
+    <button class="stand-button" >Stand</button>
+    {% if num_of_hands > 1 %}
+    
+    {% for i, hand in enumerate(winner) %}
+    <div>
+        
+        <h2>{{hand}} </h2>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% if num_of_hands == 1 %}
+    <h2>{{winner[0]}} </h2>
+    {% endif %}
     <div>
         <h2>Dealer Hand</h2>
-        <div id="dealer-hand"></div>
-        <span>{{dealer}}</span>
-        <div id="dealer-value"></div>
-        <span>{{dealer_hand}}</span>
+        <div id="dealer-hand">{{dealer_hand}}</div>
+        <span>Value: {{dealer}}</span>
     </div>
-    <div>
-        {% if is_winner %}
-        <h2>{{winner}} Win</h2>
-        {% endif %}
-    </div>        
-    <button id="hit-button">Hit</button>
-    <button id="stand-button">Stand</button>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <button id="split-button">Split</button>
     <script>
     $(document).ready(function() {
-        $("#hit-button").click(function() {
+        $(".hit-button").click(function() {
+            var handIndex = $(this).data("hand-index");
             $.ajax({
                 type: "POST",
                 url: "/blackjack/hit",
+                data: {hand_index: handIndex},
                 success: function(response) {
                     $("body").html(response);
                 }
             });
         });
-        $("#stand-button").click(function() {
+        $(".stand-button").click(function() {
+            var handIndex = $(this).data();
             $.ajax({
                 type: "POST",
                 url: "/blackjack/stand",
+                data: {hand_index: handIndex},
                 success: function(response) {
-                    
+                    $("body").html(response);
+                }
+            });
+        });
+        $("#split-button").click(function() {
+            $.ajax({
+                type: "POST",
+                url: "/blackjack/split",
+                success: function(response) {
                     $("body").html(response);
                 }
             });
