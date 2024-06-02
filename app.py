@@ -283,6 +283,8 @@ def check_inactivity():
 
 @app.route('/forum/<username1>/<username2>', methods=['GET', 'POST'])
 def chat_priv(username1, username2):
+    if 'username' not in session:
+        return redirect(url_for('login'))
     # Sort usernames to ensure consistent URL structure
     sorted_usernames = sorted([username1, username2])
     if (username1, username2) != (sorted_usernames[0], sorted_usernames[1]):
@@ -290,7 +292,8 @@ def chat_priv(username1, username2):
 
     user1 = User.query.filter_by(username=sorted_usernames[0]).first()
     user2 = User.query.filter_by(username=sorted_usernames[1]).first()
-    
+    user1.last_activity = datetime.utcnow()
+    user2.last_activity = datetime.utcnow()
     if not user1 or not user2:
         return "User not found", 404
     
@@ -343,6 +346,8 @@ def blackjack():
     if 'username' not in session:
         return redirect(url_for('login'))
     user = session['username']
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
     game_session = {'game': Game(), 'datet': datetime.utcnow(), 'player': user, 'winner': [], 'hands': 1}
     games.append(game_session)
     game = game_session['game']
@@ -360,7 +365,11 @@ def blackjack():
 
 @app.route('/blackjack/hit', methods=['POST'])
 def blackjack_hit():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     user = session['username']
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
     hand_index = int(request.form.get('hand_index', 0))
     game_session = find_latest_game_by_player(user)
     if not game_session:
@@ -384,7 +393,11 @@ def blackjack_hit():
 
 @app.route('/blackjack/stand', methods=['POST'])
 def blackjack_stand():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     user = session['username']
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
     game_session = find_latest_game_by_player(user)
     if not game_session:
         return redirect(url_for('blackjack'))  # Redirect if no game session found
@@ -406,7 +419,11 @@ def blackjack_stand():
 
 @app.route('/blackjack/split', methods=['POST'])
 def blackjack_split():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     user = session['username']
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
     game_session = find_latest_game_by_player(user)
     if not game_session:
         return redirect(url_for('blackjack'))  # Redirect if no game session found
