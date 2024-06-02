@@ -1,6 +1,6 @@
 <!-- forum_partial.html -->
 <ul id="message-list">
-    {% for message in messages %}
-        <li><strong><a href="{{message.profile_url }}">{{ message.username }}</a></strong>: {{ message.message }}</li>
+    {% for message in messages|reverse %}
+        <li><a href="{{ message.profile_url }}">{{ message.username }}</a>: {{ message.message }}</li>
     {% endfor %}
 </ul>
