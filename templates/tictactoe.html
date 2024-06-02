@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TicTacToe</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        td {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #000;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        td:hover {
+            background-color: #f0f0f0;
+        }
+        #game-id-input {
+            display: block;
+            margin: 10px auto;
+            text-align: center;
+        }
+        #replay-button, #leave-button {
+            display: none;
+            margin: 20px auto;
+            text-align: center;
+        }
+        #winner-message {
+            display: none;
+            text-align: center;
+            color: red;
+        }
+        .back-to-home {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+    <script type="text/javascript" charset="utf-8">
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        var gameId = '';
+        var currentTurn = '';
+
+        socket.on('connect', function() {
+            document.getElementById('join-game').onclick = function() {
+                gameId = document.getElementById('game-id').value;
+                if (gameId) {
+                    socket.emit('join_game', {'game_id': gameId});
+                } else {
+                    alert('Please enter a valid game ID');
+                }
+            };
+            document.getElementById('leave-button').onclick = function() {
+                socket.emit('leave_game', {'game_id': gameId});
+            };
+        });
+
+        socket.on('redirect', function(data) {
+            window.location.href = data.url;
+        });
+
+        socket.on('game_started', function(data) {
+            updateBoard(data.board);
+            currentTurn = data.current_turn;
+            document.getElementById('current-turn').innerText = 'Current Turn: ' + (currentTurn ? currentTurn : 'Not started');
+            document.getElementById('replay-button').style.display = 'none';
+            document.getElementById('winner-message').style.display = 'none';  // Hide winner message
+            document.getElementById('leave-button').style.display = 'block';  // Show leave button
+        });
+
+        socket.on('no_permission', function() {
+            alert('The game is full. You do not have permission to join this game.');
+        });
+
+        socket.on('game_full', function() {
+            alert('The game is full. Unable to join.');
+        });
+
+        socket.on('move_made', function(data) {
+            updateBoard(data.board);
+            currentTurn = data.current_turn;
+            document.getElementById('current-turn').innerText = 'Current Turn: ' + currentTurn;
+        });
+
+        socket.on('game_won', function(data) {
+            alert('Player ' + data.winner + ' has won the game!');
+            document.getElementById('winner-message').innerText = 'Player ' + data.winner + ' has won the game!';
+            document.getElementById('winner-message').style.display = 'block';  // Show winner message
+            document.getElementById('replay-button').style.display = 'block';
+        });
+
+        socket.on('game_tied', function() {
+            alert('The game is a tie!');
+            document.getElementById('winner-message').innerText = 'The game is a tie!';
+            document.getElementById('winner-message').style.display = 'block';  // Show tie message
+            document.getElementById('replay-button').style.display = 'block';
+        });
+
+        socket.on('left_game', function() {
+            alert('You have left the game.');
+            document.getElementById('leave-button').style.display = 'none';  // Hide leave button
+            document.getElementById('current-turn').innerText = 'Current Turn: ';
+            updateBoard([' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']);  // Reset board
+        });
+
+        function makeMove(cell, move) {
+            if (currentTurn) {
+                var letter = currentTurn;
+                socket.emit('make_move', {'game_id': gameId, 'move': move, 'letter': letter});
+            } else {
+                alert('Game has not started yet or invalid turn.');
+            }
+        }
+
+        function updateBoard(board) {
+            for (var i = 0; i < board.length; i++) {
+                document.getElementById('cell-' + i).innerText = board[i];
+            }
+        }
+
+        function replayGame() {
+            socket.emit('replay_game', {'game_id': gameId});
+        }
+
+        function leaveGame() {
+            socket.emit('leave_game', {'game_id': gameId});
+        }
+    </script>
+</head>
+<body>
+    <div>
+        <h1 style="text-align: center;">TicTacToe</h1>
+        <div id="game-id-input">
+            <input type="text" id="game-id" placeholder="Enter Game ID">
+            <button id="join-game">Join Game</button>
+        </div>
+        <h2 id="current-turn" style="text-align: center;">Current Turn: </h2>
+        <table>
+            <tr>
+                <td id="cell-0" onclick="makeMove(this, 0)"> </td>
+                <td id="cell-1" onclick="makeMove(this, 1)"> </td>
+                <td id="cell-2" onclick="makeMove(this, 2)"> </td>
+            </tr>
+            <tr>
+                <td id="cell-3" onclick="makeMove(this, 3)"> </td>
+                <td id="cell-4" onclick="makeMove(this, 4)"> </td>
+                <td id="cell-5" onclick="makeMove(this, 5)"> </td>
+            </tr>
+            <tr>
+                <td id="cell-6" onclick="makeMove(this, 6)"> </td>
+                <td id="cell-7" onclick="makeMove(this, 7)"> </td>
+                <td id="cell-8" onclick="makeMove(this, 8)"> </td>
+            </tr>
+        </table>
+        <div id="replay-button">
+            <button onclick="replayGame()">Replay Game</button>
+        </div>
+        <div id="leave-button">
+            <button onclick="leaveGame()">Leave Game</button>
+        </div>
+        <div id="winner-message"> <!-- Winner message element -->
+        </div>
+    </div>
+    <p class="back-to-home"><a href="{{ url_for('index') }}">Back to Home</a></p>
+</body>
+</html>

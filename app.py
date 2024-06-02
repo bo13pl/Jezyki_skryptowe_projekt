@@ -6,7 +6,7 @@ from flask_migrate import Migrate
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
-from poker import socketio as poker_socketio
+from Tici_tac import TicTacToe
 from blackjack import Game
 import os
 import json
@@ -301,7 +301,7 @@ def chat_priv(username1, username2):
     is_owner = current_username in sorted_usernames
     
     if not is_owner:
-        return render_template('no_permition.html'), 403
+        return render_template('not_logged_in.html'), 403
     
     selected_forum = request.args.get(f'selected_forum_{sorted_usernames[0]}_{sorted_usernames[1]}', f'selected_forum_{sorted_usernames[0]}_{sorted_usernames[1]}')
     messages = read_messages()
@@ -373,7 +373,7 @@ def blackjack_hit():
     hand_index = int(request.form.get('hand_index', 0))
     game_session = find_latest_game_by_player(user)
     if not game_session:
-        return redirect(url_for('blackjack'))  # Redirect if no game session found
+        return redirect(url_for('blackjack')) 
     game = game_session['game']
     if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
         return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
@@ -436,6 +436,83 @@ def blackjack_split():
     session['game'] = game.to_dict()
     return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
                             dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
+games_tici_tac = {}
+
+@app.route('/tictactoe')
+def tictactoe():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
+    return render_template('tictactoe.html')
+
+@socketio.on('join_game')
+def join_game(data):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
+    game_id = data['game_id']
+    sid = request.sid
+    if game_id not in games_tici_tac:
+        games_tici_tac[game_id] = TicTacToe()
+    game = games_tici_tac[game_id]
+    if game.get_players_length()==2:
+        emit('no_permission', room=sid)
+        return
+
+    letter = game.add_player(sid)
+    if letter:
+        join_room(game_id)
+        emit('game_started', {'board': game.board, 'letter': letter, 'current_turn': game.current_turn}, room=sid)
+    else:
+        emit('game_full', room=sid)
+
+@socketio.on('make_move')
+def handle_make_move(data):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
+    game_id = data['game_id']
+    move = data['move']
+    sid = request.sid
+    game = games_tici_tac.get(game_id)
+    if game and game.make_move(move, sid):
+        emit('move_made', {'board': game.board, 'move': move, 'letter': game.players[sid], 'current_turn': game.current_turn}, room=game_id)
+        if game.current_winner:
+            emit('game_won', {'winner': game.current_winner}, room=game_id)
+        elif ' ' not in game.board:
+            emit('game_tied', room=game_id)
+
+@socketio.on('replay_game')
+def handle_replay_game(data):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
+    game_id = data['game_id']
+    game = games_tici_tac.get(game_id)
+    if game:
+        game.reset_game()
+        emit('game_started', {'board': game.board, 'current_turn': game.current_turn}, room=game_id)
+
+@socketio.on('leave_game')
+def leave_game(data):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
+    game_id = data['game_id']
+    sid = request.sid
+    if game_id in games_tici_tac:
+        game = games_tici_tac[game_id]
+        game.remove_player(sid)
+        leave_room(game_id)
+        if game.get_players_length() == 0:
+            del games_tici_tac[game_id]  # Remove game if no players left
+        emit('left_game', room=sid)
+
 #todo:
 #   crypto to store games
 #   add money

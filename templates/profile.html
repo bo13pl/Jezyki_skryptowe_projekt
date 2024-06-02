@@ -36,6 +36,7 @@
     <p><a href="{{ url_for('forum') }}">Go to Forum</a></p>
     {% if not is_owner %}
     <p><a href="{{ url_for('chat_priv', username1=user.username, username2=my_name) }}">Write to this user</a></p>
+    <p><a href="{{ url_for('tictactoe') }}">tictactoe</a></p>
     {% endif %}
     <p><a href="{{ url_for('logout') }}">Logout</a></p>
     <p><a href="{{ url_for('blackjack') }}">blackjack</a></p>
