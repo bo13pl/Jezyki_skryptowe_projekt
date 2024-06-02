@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackjack</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Blackjack</h1>
+    <div>
+        <h2>Player Hand</h2>
+        <div id="player-hand"></div>
+        <span>{{player}}</span>
+        <div id="player-value"></div>
+        <span>{{player_hand}}</span>
+    </div>
+    <div>
+        <h2>Dealer Hand</h2>
+        <div id="dealer-hand"></div>
+        <span>{{dealer}}</span>
+        <div id="dealer-value"></div>
+        <span>{{dealer_hand}}</span>
+    </div>
+    <div>
+        {% if dealer_win %}
+        <h2>Dealer Win</h2>
+        {% endif %}
+        {% if player_win %}
+        <h2>Player Win</h2>
+        {% endif %}
+    </div>        
+    <button id="hit-button">Hit</button>
+    <button id="stand-button">Stand</button>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        $("#hit-button").click(function() {
+            $.ajax({
+                type: "POST",
+                url: "/blackjack/hit",
+                success: function(response) {
+                    $("body").html(response);
+                }
+            });
+        });
+        $("#stand-button").click(function() {
+            $.ajax({
+                type: "POST",
+                url: "/blackjack/stand",
+                success: function(response) {
+                    
+                    $("body").html(response);
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>

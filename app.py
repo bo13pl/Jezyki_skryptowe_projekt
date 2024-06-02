@@ -5,6 +5,8 @@ from flask_migrate import Migrate
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
+from poker import socketio as poker_socketio
+from blackjack import Game
 import os
 import json
 import threading
@@ -326,6 +328,49 @@ def chat_priv(username1, username2):
                                ],
                                selected_forum=selected_forum)
 
+game = Game()
+@app.route('/blackjack')
+def blackjack():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    game.clear_hends()
+    game.deal_initial_cards() 
+    session['game'] = game.to_dict()
+    return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand)
+
+
+
+@app.route('/blackjack/hit', methods=['POST'])
+def blackjack_hit():
+    game.hit(game.player_hand)
+
+    if game.is_bust(game.player_hand):
+        winner = 'Dealer'
+    elif game.is_blackjack(game.player_hand):
+        winner = 'Player'
+    else:
+        winner = None
+    if bool(winner):
+        return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
+                           dealer_win = winner=='Dealer', player_win=winner=='Player')
+    else:
+        return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand)
+
+@app.route('/blackjack/stand', methods=['POST'])
+def blackjack_stand():
+    game.dealer_plays()
+    winner = game.check_winner()
+    session.pop('game')
+    return render_template('blackjack.html', player=game.player_hand.value, player_hand=game.player_hand, dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand,
+                           dealer_win = winner=='Dealer', player_win=winner=='Player')
+#todo:
+#   crypto to store games
+#   add money
+#   add multipleyer
+#   add diferent games
+#   
+#
+#
 if __name__ == '__main__':
     thread = threading.Thread(target=check_inactivity)
     thread.daemon = True
