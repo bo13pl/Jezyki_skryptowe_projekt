@@ -301,7 +301,7 @@ def chat_priv(username1, username2):
     is_owner = current_username in sorted_usernames
     
     if not is_owner:
-        return render_template('not_logged_in.html'), 403
+        return render_template('no_permition.html'), 403
     
     selected_forum = request.args.get(f'selected_forum_{sorted_usernames[0]}_{sorted_usernames[1]}', f'selected_forum_{sorted_usernames[0]}_{sorted_usernames[1]}')
     messages = read_messages()
@@ -375,7 +375,6 @@ def blackjack_hit():
     if not game_session:
         return redirect(url_for('blackjack'))  # Redirect if no game session found
     game = game_session['game']
-    # Check if the player's turn has ended
     if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
         return render_template('blackjack.html', user_name=user, player_hands=game.player_hands, dealer=game.dealer_hand.value,
                                 dealer_hand=game.dealer_hand, enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
@@ -400,7 +399,7 @@ def blackjack_stand():
     current_user.last_activity = datetime.utcnow()
     game_session = find_latest_game_by_player(user)
     if not game_session:
-        return redirect(url_for('blackjack'))  # Redirect if no game session found
+        return redirect(url_for('blackjack'))  
     game = game_session['game']
     game_session['standed_hands'] += 1
     # Check if the player's turn has ended
