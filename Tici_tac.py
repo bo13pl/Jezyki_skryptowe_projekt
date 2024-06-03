@@ -112,7 +112,7 @@ def is_moves_left(board):
 
 def minimax(board, is_max):
  
-    if is_moves_left(board) or bool( evaluate(board)):
+    if is_moves_left(board) or bool(evaluate(board)):
         return evaluate(board)
 
     if is_max:
@@ -149,13 +149,6 @@ def find_best_move(board, player):
     return best_move
 
 def ai_move_smurt(game, player):
-    if game.num_empty_squares() == 0:
-        return None
-    move = find_best_move(game.board, player)
-    game.make_move_ai(move, player)
-    return move
-
-def ai_move_not_smurt(game, player):
     if game.num_empty_squares() == 0:
         return None
     move = find_best_move(game.board, player)
