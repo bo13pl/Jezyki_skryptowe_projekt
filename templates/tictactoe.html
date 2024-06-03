@@ -41,9 +41,10 @@
             right: 10px;
         }
     </style>
-    <script type="text/javascript" charset="utf-8">
+    <script type="text/javascript">
         var socket = io.connect('http://' + document.domain + ':' + location.port);
         var gameId = '';
+        var winner = '';
         var currentTurn = '';
 
         socket.on('connect', function() {
@@ -69,8 +70,8 @@
             currentTurn = data.current_turn;
             document.getElementById('current-turn').innerText = 'Current Turn: ' + (currentTurn ? currentTurn : 'Not started');
             document.getElementById('replay-button').style.display = 'none';
-            document.getElementById('winner-message').style.display = 'none';  // Hide winner message
-            document.getElementById('leave-button').style.display = 'block';  // Show leave button
+            document.getElementById('winner-message').style.display = 'none';
+            document.getElementById('leave-button').style.display = 'block';
         });
 
         socket.on('no_permission', function() {
@@ -88,35 +89,51 @@
         });
 
         socket.on('game_won', function(data) {
+            winner =  data.winner;
             alert('Player ' + data.winner + ' has won the game!');
             document.getElementById('winner-message').innerText = 'Player ' + data.winner + ' has won the game!';
-            document.getElementById('winner-message').style.display = 'block';  // Show winner message
+            document.getElementById('winner-message').style.display = 'block';
             document.getElementById('replay-button').style.display = 'block';
         });
 
         socket.on('game_tied', function() {
+            winner =  'tie';
             alert('The game is a tie!');
             document.getElementById('winner-message').innerText = 'The game is a tie!';
-            document.getElementById('winner-message').style.display = 'block';  // Show tie message
+            document.getElementById('winner-message').style.display = 'block';
             document.getElementById('replay-button').style.display = 'block';
         });
 
         socket.on('left_game', function() {
             alert('You have left the game.');
-            document.getElementById('leave-button').style.display = 'none';  // Hide leave button
+            document.getElementById('leave-button').style.display = 'none';
             document.getElementById('current-turn').innerText = 'Current Turn: ';
-            updateBoard([' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']);  // Reset board
+            updateBoard([' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']);
         });
 
         function makeMove(cell, move) {
             if (currentTurn) {
+                if (winner===''){
+                    var letter = currentTurn;
+                    socket.emit('make_move', {'game_id': gameId, 'move': move, 'letter': letter});
+                }
+                else{
+                    winner='';
+                    replayGame();
+                }
+            } else {
+                gameId = 'ai' + Math.floor(Math.random() * 1000).toString();
+                
+                socket.emit('join_game', {'game_id': gameId});
                 var letter = currentTurn;
                 socket.emit('make_move', {'game_id': gameId, 'move': move, 'letter': letter});
-            } else {
-                alert('Game has not started yet or invalid turn.');
             }
         }
 
+
+        function started_with_AI() {
+            alert('Game has started with AI: ai');
+        }
         function updateBoard(board) {
             for (var i = 0; i < board.length; i++) {
                 document.getElementById('cell-' + i).innerText = board[i];
@@ -124,6 +141,7 @@
         }
 
         function replayGame() {
+            winner='';
             socket.emit('replay_game', {'game_id': gameId});
         }
 
@@ -163,7 +181,7 @@
         <div id="leave-button">
             <button onclick="leaveGame()">Leave Game</button>
         </div>
-        <div id="winner-message"> <!-- Winner message element -->
+        <div id="winner-message">
         </div>
     </div>
     <p class="back-to-home"><a href="{{ url_for('index') }}">Back to Home</a></p>

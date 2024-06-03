@@ -6,7 +6,7 @@ from flask_migrate import Migrate
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
-from Tici_tac import TicTacToe
+from Tici_tac import TicTacToe, ai_move_smurt
 from blackjack import Game
 import os
 import json
@@ -445,45 +445,109 @@ def tictactoe():
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
     return render_template('tictactoe.html')
-
 @socketio.on('join_game')
 def join_game(data):
     if 'username' not in session:
-        return redirect(url_for('login'))
+        emit('redirect', {'url': url_for('login')})
+        return
+    
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
+    
     game_id = data['game_id']
-    sid = request.sid
+    sid = session['username']
+    
+
     if game_id not in games_tici_tac:
         games_tici_tac[game_id] = TicTacToe()
     game = games_tici_tac[game_id]
-    if game.get_players_length()==2:
-        emit('no_permission', room=sid)
-        return
+    
+    if game_id.startswith('ai'):
+        letter = game.add_player(sid)
 
-    letter = game.add_player(sid)
-    if letter:
         join_room(game_id)
-        emit('game_started', {'board': game.board, 'letter': letter, 'current_turn': game.current_turn}, room=sid)
+        
+        emit('game_started', {'board': game.board, 'current_turn': game.current_turn}, room=game_id)
     else:
-        emit('game_full', room=sid)
+        if not game.add_player(sid):
+            emit('no_permission', room=sid)
+            return
+        
+        letter = game.add_player(sid)
+        if letter:
+            join_room(game_id)
+            emit('game_started', {'board': game.board, 'letter': letter, 'current_turn': game.current_turn}, room=sid)
+        else:
+            emit('game_full', room=sid)
 
 @socketio.on('make_move')
 def handle_make_move(data):
     if 'username' not in session:
-        return redirect(url_for('login'))
+        emit('redirect', {'url': url_for('login')})
+        return
+    
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
+    
     game_id = data['game_id']
     move = data['move']
-    sid = request.sid
+    sid = session['username']
+    
+    print("start making move")
     game = games_tici_tac.get(game_id)
-    if game and game.make_move(move, sid):
-        emit('move_made', {'board': game.board, 'move': move, 'letter': game.players[sid], 'current_turn': game.current_turn}, room=game_id)
-        if game.current_winner:
-            emit('game_won', {'winner': game.current_winner}, room=game_id)
-        elif ' ' not in game.board:
-            emit('game_tied', room=game_id)
+    
+    if game:
+        print("pass 0")
+        if game_id.startswith('ai'):
+            print("pass 1")
+            if game.make_move(move, sid):
+                print("pass 2")
+                emit('move_made', {'board': game.board, 'move': move, 'letter': game.players[sid], 'current_turn': game.current_turn}, room=game_id)
+                print(game_id)
+                if game.current_winner:
+                    emit('game_won', {'winner': game.current_winner}, room=game_id)
+                elif ' ' not in game.board:
+                    emit('game_tied', room=game_id)
+                else:
+                    print("start to decide")
+                    if game.players[sid] == 'X':
+                        player_ai = 'O'
+                    elif game.players[sid] == 'O':
+                        player_ai = 'X'
+                    ai_move_result = ai_move_smurt(game, player_ai)
+                    
+                    emit('move_made', {'board': game.board, 'move': ai_move_result, 'letter': player_ai, 'current_turn': game.current_turn}, room=game_id)
+                    print(game_id)
+                    print("finish to decide", ai_move_result)
+                    if game.current_winner:
+                        emit('game_won', {'winner': game.current_winner}, room=game_id)
+                    elif ' ' not in game.board:
+                        emit('game_tied', room=game_id)
+            elif game.is_empty_board():
+                print("start to decide")
+                if game.players[sid] == 'X':
+                    player_ai = 'O'
+                elif game.players[sid] == 'O':
+                    player_ai = 'X'
+                ai_move_result = ai_move_smurt(game, player_ai)
+                    
+                emit('move_made', {'board': game.board, 'move': ai_move_result, 'letter': player_ai, 'current_turn': game.current_turn}, room=game_id)
+                print(game_id)
+                print("finish to decide", ai_move_result)
+                if game.current_winner:
+                    emit('game_won', {'winner': game.current_winner}, room=game_id)
+                elif ' ' not in game.board:
+                    emit('game_tied', room=game_id)
+        else:
+            if game.make_move(move, sid):
+                emit('move_made', {'board': game.board, 'move': move, 'letter': game.players[sid], 'current_turn': game.current_turn}, room=game_id)
+                if game.current_winner:
+                    emit('game_won', {'winner': game.current_winner}, room=game_id)
+                elif ' ' not in game.board:
+                    emit('game_tied', room=game_id)
+            else:
+                emit('invalid_move', room=sid)
+
 
 @socketio.on('replay_game')
 def handle_replay_game(data):
@@ -504,7 +568,7 @@ def leave_game(data):
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
     game_id = data['game_id']
-    sid = request.sid
+    sid = session['username']
     if game_id in games_tici_tac:
         game = games_tici_tac[game_id]
         game.remove_player(sid)

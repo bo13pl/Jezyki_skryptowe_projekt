@@ -1,3 +1,5 @@
+import math
+import copy
 class TicTacToe:
     def __init__(self):
         self.board = [' '] * 9
@@ -6,11 +8,15 @@ class TicTacToe:
         self.current_turn = 'X'
 
     def add_player(self, sid):
-        if len(self.players) < 2:
+        player = self.players.get(sid)
+        if player is not None:
+            return player
+        elif len(self.players) < 2:
             letter = 'X' if len(self.players) == 0 else 'O'
             self.players[sid] = letter
             return letter
         return None
+
     
     def get_players_length(self):
         return len(self.players)
@@ -61,6 +67,97 @@ class TicTacToe:
     def num_empty_squares(self):
         return self.board.count(' ')
 
+    def is_empty_board(self):
+        return self.board.count(' ') == 9
+
     def reset_game(self):
         self.board = [' '] * 9
         self.current_winner = None
+    
+    def make_move_ai(self,move, player):
+        self.board[move] = player
+        if self.winner(move, player):
+            self.current_winner = player
+        self.current_turn = 'O' if player == 'X' else 'X'
+    
+
+def evaluate(board):
+    # Check rows
+    for i in range(0, 9, 3):
+        if board[i] == board[i+1] == board[i+2] == 'X':
+            return 10
+        elif board[i] == board[i+1] == board[i+2] == 'O':
+            return -10
+
+    # Check columns
+    for i in range(3):
+        if board[i] == board[i+3] == board[i+6] == 'X':
+            return 10
+        elif board[i] == board[i+3] == board[i+6] == 'O':
+            return -10
+
+    # Check diagonals
+    if board[0] == board[4] == board[8] == 'X' or \
+       board[2] == board[4] == board[6] == 'X':
+        return 10
+    elif board[0] == board[4] == board[8] == 'O' or \
+         board[2] == board[4] == board[6] == 'O':
+        return -10
+
+    # No winner
+    return 0
+
+def is_moves_left(board):
+    return ' ' in board
+
+def minimax(board, is_max):
+ 
+    if is_moves_left(board) or bool( evaluate(board)):
+        return evaluate(board)
+
+    if is_max:
+        best = -1000
+        for i in range(9):
+            if board[i] == ' ':
+                board[i] = 'X'
+                best = max(best, minimax(board, not is_max))
+                board[i] = ' '
+        return best
+    else:
+        best = 1000
+        for i in range(9):
+            if board[i] == ' ':
+                board[i] = 'O'
+                best = min(best, minimax(board, not is_max))
+                board[i] = ' '
+        return best
+
+def find_best_move(board, player):
+    best_val = -1000
+    best_move = -1
+
+    for i in range(9):
+        if board[i] == ' ':
+            board[i] = 'X'
+            move_val = minimax(board, is_max=player=='X')
+            board[i] = ' '
+
+            if move_val > best_val:
+                best_move = i
+                best_val = move_val
+
+    return best_move
+
+def ai_move_smurt(game, player):
+    if game.num_empty_squares() == 0:
+        return None
+    move = find_best_move(game.board, player)
+    game.make_move_ai(move, player)
+    return move
+
+def ai_move_not_smurt(game, player):
+    if game.num_empty_squares() == 0:
+        return None
+    move = find_best_move(game.board, player)
+    game.make_move_ai(move, player)
+    return move
