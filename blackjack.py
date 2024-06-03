@@ -1,15 +1,15 @@
 import random
 
 class Card:
-    suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-    values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+    suits = ['hearts', 'diamonds', 'clubs', 'spades']
+    values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace']
 
     def __init__(self, suit, value):
         self.suit = suit
         self.value = value
 
     def __str__(self):
-        return f'{self.value} of {self.suit}'
+        return f'{self.value}_of_{self.suit}.png'
 
 class Hand:
     def __init__(self):
@@ -20,14 +20,14 @@ class Hand:
     def add_card(self, card):
         self.cards.append(card)
         self.value += self.card_value(card)
-        if card.value == 'A':
+        if card.value == 'ace':
             self.aces += 1
         self.adjust_for_ace()
 
     def card_value(self, card):
-        if card.value in ['J', 'Q', 'K']:
+        if card.value in ['jack', 'queen', 'king']:
             return 10
-        elif card.value == 'A':
+        elif card.value == 'ace':
             return 11
         else:
             return int(card.value)
@@ -52,7 +52,12 @@ class Hand:
 
     def __str__(self):
         return ', '.join([str(card) for card in self.cards])
-
+    
+    def get_cards(self):
+        return [str(card) for card in self.cards]
+    
+    def get_value(self):
+        return self.value
 class Deck:
     def __init__(self):
         self.cards = [Card(suit, value) for suit in Card.suits for value in Card.values]

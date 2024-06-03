@@ -11,7 +11,11 @@
     <h1>Blackjack <a href="{{ user_profile_url }}">{{user_name}}</a></h1>
     <div>
         <h2>Dealer Hand</h2>
-        <div id="dealer-hand">{{dealer_hand}}</div>
+        <div id="dealer-hand">
+            {% for card in dealer_hand %}
+            <img src="/static/cards/{{card}}" alt="{{card}}" class="card">
+            {% endfor %}
+        </div>
         <span>Value: {{dealer}}</span>
     </div>
     <button id="split-button">Split</button>
@@ -20,13 +24,17 @@
         {% for i, hand in enumerate(player_hands) %}
         <div class="player-hand">
             <h2>Player Hand {{i + 1}}</h2>
-            <div id="player-hand-{{i}}">{{hand}}</div>
+            <div id="player-hand-{{i}}">
+                {% for card in hand.hand %}
+                <img src="/static/cards/{{card}}" alt="{{card}}" class="card">
+                {% endfor %}
+            </div>
             <span>Value: {{hand.value}}</span>
             <button class="hit-button" data-hand-index="{{i}}">Hit</button>
         </div>
         {% endfor %}
     </div>
-    <button class="stand-button" >Stand</button>
+    <button class="stand-button">Stand</button>
     {% if num_of_hands > 1 %}
     
     {% for i, hand in enumerate(winner) %}
@@ -96,12 +104,12 @@
 
     <style>
 body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 0;
-            text-align: center; /* Align buttons to center */
-        }
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    text-align: center; /* Align buttons to center */
+}
 
 h1 {
     text-align: center;
@@ -178,26 +186,31 @@ span {
     background-color: #218838;
 }
 
+.button-container {
+    margin-top: 20px;
+}
 
-        .button-container {
-            margin-top: 20px;
-        }
+.button-container button {
+    display: inline-block;
+    margin: 0 10px; /* Add some spacing between buttons */
+    padding: 10px 20px;
+    background-color: beige; /* Beige color */
+    color: #000; /* Black text color */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
 
-        .button-container button {
-            display: inline-block;
-            margin: 0 10px; /* Add some spacing between buttons */
-            padding: 10px 20px;
-            background-color: beige; /* Beige color */
-            color: #000; /* Black text color */
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+.button-container button:hover {
+    background-color: #e6d7b9; /* Darker beige on hover */
+}
 
-        .button-container button:hover {
-            background-color: #e6d7b9; /* Darker beige on hover */
-        }
+.card {
+    width: 100px; /* Adjust as needed */
+    height: auto; /* Maintain aspect ratio */
+    margin: 5px;
+}
     </style>
 </body>
 </html>
