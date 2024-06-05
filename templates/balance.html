@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balance Replenishment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            text-align: center;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+    <script>
+        $(document).ready(function() {
+            $(".submit").click(function() {
+                var amount_in = document.getElementById('amount').value;
+                $.ajax({
+                    type: "POST",
+                    url: "/topup",
+                    data: {amount: amount_in},
+                    success: function(response) {
+                        $("body").html(response);
+                    }
+                });
+            });
+            
+        });
+        </script>
+        <script>
+            function validateInput(event) {
+                const input = event.target.value;
+                const regex = /^[0-9]*$/; 
+                const errorMessage = document.getElementById('error-message');
+
+                if (!regex.test(input)) {
+                    errorMessage.innerText = 'Please enter integers only.';
+                    event.target.classList.add('error');
+                } else {
+                    errorMessage.innerText = '';
+                    event.target.classList.remove('error');
+                }
+            }
+        </script>
+            <script type="text/javascript" charset="utf-8">
+                var socket = io();
+                socket.emit('check_inactivity'); 
+                
+                socket.on('inactive_warning', function(data) {
+                    console.log('Received inactive warning:', data.message);
+                    window.alert("inactive_warning");
+                });
+                
+                socket.on('force_logout', function(data) {
+                    console.log('Received force logout:', data.message);
+                    window.alert("force_logout");
+                });
+            </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Balance Replenishment</h1>
+        <p>This is a page for replenishing your account, <a href="{{ user_profile_url }}">{{user_name}}</a>  {{user_money}}, balance.</p>
+        <form action="#" method="POST">
+            <div class="form-group">
+                <label for="amount">Amount to Replenish:</label>
+                <input type="text" id="amount" name="amount" placeholder="Enter amount" min="2" max="6" oninput="validateInput(event)">
+                <div id="error-message" class="error-message"></div>
+            </div>
+            <button type="submit" class="btn">Confirm</button>
+        </form>
+        {%if im_money%}
+        <p><a href="{{ url_for('blackjack') }}"> Now you can play blackjack</a></p>
+        {% endif %}
+    </div>
+</body>
+</html>

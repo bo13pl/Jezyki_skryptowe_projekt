@@ -149,6 +149,20 @@
             socket.emit('leave_game', {'game_id': gameId});
         }
     </script>
+    <script type="text/javascript" charset="utf-8">
+        var socket = io();
+        socket.emit('check_inactivity'); 
+        
+        socket.on('inactive_warning', function(data) {
+            console.log('Received inactive warning:', data.message);
+            window.alert("inactive_warning");
+        });
+        
+        socket.on('force_logout', function(data) {
+            console.log('Received force logout:', data.message);
+            window.alert("force_logout");
+        });
+    </script>
 </head>
 <body>
     <div>

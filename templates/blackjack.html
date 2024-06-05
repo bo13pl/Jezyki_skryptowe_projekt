@@ -8,8 +8,10 @@
 </head>
 <body>
 
-    <h1>Blackjack <a href="{{ user_profile_url }}">{{user_name}}</a></h1>
+    <h1>Blackjack <a href="{{ user_profile_url }}">{{user_name}}</a>  {{user_money}}</h1>
+    <button id="start-game-button">Start Game</button> 
     <div>
+        {%if im_money%}
         <h2>Dealer Hand</h2>
         <div id="dealer-hand">
             {% for card in dealer_hand %}
@@ -17,10 +19,25 @@
             {% endfor %}
         </div>
         <span>Value: {{dealer}}</span>
+        {% endif %}
     </div>
     <button id="split-button">Split</button>
+    {%if not im_money%}
+    <form id="edit-form" method="post">
+        <h2>Player bet per hend</h2>
+        <input type="text" id="money" name="money" value="{{bet}}" ><br>
 
+    </form>
+    {% endif %}
+    {%if  im_money%}
+    <form id="edit-form" method="post">
+
+        <input type="text" id="money" name="money" value="{{bet}}" readonly><br>
+
+    </form>
+    {% endif %}
     <div id="player-hands">
+        {%if im_money%}
         {% for i, hand in enumerate(player_hands) %}
         <div class="player-hand">
             <h2>Player Hand {{i + 1}}</h2>
@@ -33,8 +50,11 @@
             <button class="hit-button" data-hand-index="{{i}}">Hit</button>
         </div>
         {% endfor %}
+        {% endif %}
     </div>
+    {%if im_money%}
     <button class="stand-button">Stand</button>
+
     {% if num_of_hands > 1 %}
     
     {% for i, hand in enumerate(winner) %}
@@ -46,54 +66,69 @@
     {% if num_of_hands == 1 %}
     <h2>{{winner[0]}} </h2>
     {% endif %}
+ 
     <div class="button-container">
         <button onclick="location.href='/blackjack'">Restart</button>
         <button onclick="location.href='/index'">Go to Index</button>
     </div>
+    {% endif %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
     <script type="text/javascript" charset="utf-8">
         var socket = io();
-        socket.emit('check_inactivity'); // Emit check_inactivity event to start the inactivity check
+        socket.emit('check_inactivity'); 
         socket.on('inactive_warning', function(data) {
             console.log('Received inactive warning:', data.message);
-            // Display inactive warning message
             window.alert("inactive_warning");
         });
         socket.on('force_logout', function(data) {
             console.log('Received force logout:', data.message);
-            // Display force logout message
             window.alert("force_logout");
         });
     </script>
     <script>
     $(document).ready(function() {
         $(".hit-button").click(function() {
+            var money_input = document.getElementById('money').value;
             var handIndex = $(this).data("hand-index");
             $.ajax({
                 type: "POST",
                 url: "/blackjack/hit",
-                data: {hand_index: handIndex},
+                data: {hand_index: handIndex, money: money_input},
                 success: function(response) {
                     $("body").html(response);
                 }
             });
         });
         $(".stand-button").click(function() {
+            var money_input = document.getElementById('money').value;
             var handIndex = $(this).data();
             $.ajax({
                 type: "POST",
                 url: "/blackjack/stand",
-                data: {hand_index: handIndex},
+                data: {hand_index: handIndex, money: money_input},
                 success: function(response) {
                     $("body").html(response);
                 }
             });
         });
         $("#split-button").click(function() {
+            var money_input = document.getElementById('money').value;
             $.ajax({
                 type: "POST",
+                data: {money: money_input},
                 url: "/blackjack/split",
+                success: function(response) {
+                    $("body").html(response);
+                }
+            });
+        });
+        $("#start-game-button").click(function() {
+            var money_input = document.getElementById('money').value;
+            $.ajax({
+                type: "POST",
+                data: {money: money_input},
+                url: "/blackjack/start_game",
                 success: function(response) {
                     $("body").html(response);
                 }

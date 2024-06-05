@@ -1,5 +1,5 @@
 from asyncio.windows_events import NULL
-from flask import Flask, render_template, request, redirect, send_from_directory, url_for, jsonify, session
+from flask import Flask, render_template, request, redirect, flash, url_for, jsonify, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -43,13 +43,16 @@ class User(db.Model):
     last_activity = db.Column(db.DateTime, default=datetime.utcnow)
     birthdate = db.Column(db.Date, nullable=True)
     gender = db.Column(db.String(10), nullable=True)
+    money = db.Column(db.Integer, nullable=False)
 
     def __init__(self, username, password, birthdate=None, gender=None):
         self.username = username
         self.password = generate_password_hash(password)
+        self.is_active = True
         self.last_activity = datetime.utcnow()
         self.birthdate = birthdate
         self.gender = gender
+        self.money = 1000                           #start balance
 
 # Create tables
 with app.app_context():
@@ -175,7 +178,7 @@ def index():
             return render_template('index.html', 
                                    username=session['username'], 
                                    active_users=[{'username': user.username, 'profile_url': url_for('profile', username=user.username)} for user in active_users])
-    return redirect(url_for('login'))
+    return render_template('not_logged_in.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -287,7 +290,7 @@ def check_inactivity():
 @app.route('/forum/<username1>/<username2>', methods=['GET', 'POST'])
 def chat_priv(username1, username2):
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     # Sort usernames to ensure consistent URL structure
     sorted_usernames = sorted([username1, username2])
     if (username1, username2) != (sorted_usernames[0], sorted_usernames[1]):
@@ -344,109 +347,190 @@ def find_latest_game_by_player(player_name):
     filtered_games.sort(key=lambda x: x['datet'], reverse=True)
     return filtered_games[0]
 
-@app.route('/blackjack')
+@app.route('/blackjack/start_game', methods=['POST'])
+def start_game():
+    if 'username' not in session:
+        return render_template('not_logged_in.html')
+    
+    money = int(request.form.get('money')) if request.form.get('money') is not None or not '' else 0
+    current_user = User.query.filter_by(username=session['username']).first()
+    user = session['username']
+    current_user.last_activity = datetime.utcnow()
+    print(request.form.get('money'))
+    if money==0 or money == NULL:
+        db.session.commit()
+        return render_template('blackjack.html', user_name=user, user_profile_url = url_for('profile', username=user), im_money=False, user_money = current_user.money)
+    else:
+        user = session['username']
+        current_user = User.query.filter_by(username=session['username']).first()
+        current_user.last_activity = datetime.utcnow()
+
+
+        current_user.money-=money
+        game_session = {'game': Game(), 'datet': datetime.utcnow(), 'player': user, 'winner': [], 'hands': 1}
+        games.append(game_session)
+        
+        game = game_session['game']
+        game.clear_hands()
+        game.deal_initial_cards()
+        session['game'] = game.to_dict()
+        game_session['standed_hands'] = 1
+
+        player_winners = [winner for winner in game_session['winner'] if 'Player' in winner]
+
+
+        if game.is_blackjack(game.player_hands[0]):
+            current_user.money+=money*2.5
+            game_session['winner'].append(f'Hand 1 win Player')
+            games.remove(game_session)
+            db.session.commit()
+            return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
+                                winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands=len(game_session['winner']), user_profile_url=url_for('profile', username=user), user_money=current_user.money,
+                                  im_money=True, bet = money)
+        db.session.commit()
+        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
+                                dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands=len(game_session['winner']), user_profile_url=url_for('profile', username=user),
+                                  user_money=current_user.money, im_money=True, bet = money)
+
+
+@app.route('/blackjack', methods=['GET', 'POST'])
 def blackjack():
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
+        
     user = session['username']
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
-    game_session = {'game': Game(), 'datet': datetime.utcnow(), 'player': user, 'winner': [], 'hands': 1}
-    games.append(game_session)
-    game = game_session['game']
-    game.clear_hands()
-    game.deal_initial_cards()
-    session['game'] = game.to_dict()
-    game_session['standed_hands'] = 1
-    if game.is_blackjack(game.player_hands[0]):
-        game_session['winner'].append(f'Hand 1 win Player')
-        games.remove(game_session)
-        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
-                               winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
-    return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
-                            dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
+    db.session.commit()
+
+    money = int(request.form.get('money')) if request.form.get('money') is not None else 0
+    print(money)
+    if current_user.money<=10:
+        return  redirect(url_for('topup'))
+    elif money==0 or money == NULL:
+        db.session.commit()
+        return render_template('blackjack.html', user_name=user, user_profile_url = url_for('profile', username=user), im_money=False, user_money = current_user.money, bet = money)
+    else:
+        game_session = {'game': Game(), 'datet': datetime.utcnow(), 'player': user, 'winner': [], 'hands': 1}
+        games.append(game_session)
+        game = game_session['game']
+        game.clear_hands()
+        game.deal_initial_cards()
+        session['game'] = game.to_dict()
+        game_session['standed_hands'] = 1
+        if game.is_blackjack(game.player_hands[0]):
+            game_session['winner'].append(f'Hand 1 win Player')
+            games.remove(game_session)
+            db.session.commit()
+            return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
+                            winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
+        db.session.commit()
+        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
+                                dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
 
 @app.route('/blackjack/hit', methods=['POST'])
 def blackjack_hit():
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     user = session['username']
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
+    db.session.commit()
+    money = int(request.form.get('money')) if request.form.get('money') is not None else 0
     hand_index = int(request.form.get('hand_index', 0))
     game_session = find_latest_game_by_player(user)
-    if not game_session:
-        return redirect(url_for('blackjack')) 
-    game = game_session['game']
-    if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
-        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
-                                dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
-    
-    game.hit(game.player_hands[hand_index])
-    if game.is_bust(game.player_hands[hand_index]):
-        game_session['winner'].append(f'Hand {hand_index + 1} win Dealer')
-    elif game.is_blackjack(game.player_hands[hand_index]):
-        game_session['winner'].append(f'Hand {hand_index + 1} win Player')
+    if 'game' in game_session:
+        game = game_session['game']
+        if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
+            db.session.commit()
+            return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
+                                    dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
+            
+        game.hit(game.player_hands[hand_index])
+        if game.is_bust(game.player_hands[hand_index]):
+            game_session['winner'].append(f'Hand {hand_index + 1} win Dealer')
+            if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
+                games.remove(game_session) 
+        elif game.is_blackjack(game.player_hands[hand_index]):
+            game_session['winner'].append(f'Hand {hand_index + 1} win Player')
+            if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
+                games.remove(game_session) 
 
-    if len(game_session['winner']) == game_session['standed_hands']:
-        games.remove(game_session)  # Clear the game session after finishing
-    return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
-                            winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
+        
+            
+ # Clear the game session after finishing
+        db.session.commit()
+        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
+                                    winner=game_session['winner'], is_winner=bool(game_session['winner']), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
 
 @app.route('/blackjack/stand', methods=['POST'])
 def blackjack_stand():
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     user = session['username']
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
+    db.session.commit()
+    money = int(request.form.get('money')) if request.form.get('money') is not None else 0
     game_session = find_latest_game_by_player(user)
-    if not game_session:
-        return redirect(url_for('blackjack'))  
-    game = game_session['game']
-    game_session['standed_hands'] += 1
-    # Check if the player's turn has ended
-    if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
+    if 'game' in game_session:
+        game = game_session['game']
+        game_session['standed_hands'] += 1
+        # Check if the player's turn has ended
+        if game.get_player_turn_ended() and len(game_session['winner']) == game_session['hands']:
+            db.session.commit()
+            return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
+                                    dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
+        
+        game.dealer_plays()
+        winners = game.check_winner()  # Assuming only one hand for simplicity
+        if winners:
+            game_session['winner'] = winners
+            games.remove(game_session)  # Clear the game session after finishing
+        player_winners = [winner for winner in game_session['winner'] if 'Player' in winner]
+        current_user.money += money * len(player_winners)*2
+        player_tie = [winner for winner in game_session['winner'] if 'Tie' in winner]
+        current_user.money += money * len(player_tie)
+        db.session.commit()
         return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
-                                dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
-    
-    game.dealer_plays()
-    winners = game.check_winner()  # Assuming only one hand for simplicity
-    if winners:
-        game_session['winner'] = winners
-        games.remove(game_session)  # Clear the game session after finishing
-    return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
-                            dealer_hand=game.dealer_hand.get_cards(), winner=game_session['winner'], is_winner=bool(game_session['winner']),
-                              enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
+                                dealer_hand=game.dealer_hand.get_cards(), winner=game_session['winner'], is_winner=bool(game_session['winner']),
+                                enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
 
 @app.route('/blackjack/split', methods=['POST'])
 def blackjack_split():
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     user = session['username']
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
+    db.session.commit()
+    money = int(request.form.get('money')) if request.form.get('money') is not None else 0
+
+    current_user.money-=money
+    db.session.commit()
     game_session = find_latest_game_by_player(user)
-    if not game_session:
-        return redirect(url_for('blackjack'))  # Redirect if no game session found
-    game = game_session['game']
-    try:
-        game.split_hand(0)
-    except ValueError as e:
-        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
-                               error=str(e), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
-    game_session['standed_hands'] *= 2
-    session['game'] = game.to_dict()
-    return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
-                            dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user))
+    if 'game' in game_session:
+        game = game_session['game']
+        try:
+            game.split_hand(0)
+        except ValueError as e:
+            db.session.commit()
+            return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value, dealer_hand=game.dealer_hand.get_cards(),
+                                error=str(e), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
+        game_session['standed_hands'] *= 2
+        session['game'] = game.to_dict()
+        db.session.commit()
+        return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
+                                dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
 games_tici_tac = {}
 
 @app.route('/tictactoe')
 def tictactoe():
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
+    db.session.commit()
     return render_template('tictactoe.html')
 @socketio.on('join_game')
 def join_game(data):
@@ -456,7 +540,7 @@ def join_game(data):
     
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
-    
+    db.session.commit()
     game_id = data['game_id']
     sid = session['username']
     
@@ -491,7 +575,7 @@ def handle_make_move(data):
     
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
-    
+    db.session.commit()
     game_id = data['game_id']
     move = data['move']
     sid = session['username']
@@ -555,7 +639,7 @@ def handle_make_move(data):
 @socketio.on('replay_game')
 def handle_replay_game(data):
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
     game_id = data['game_id']
@@ -567,7 +651,7 @@ def handle_replay_game(data):
 @socketio.on('leave_game')
 def leave_game(data):
     if 'username' not in session:
-        return redirect(url_for('login'))
+        return render_template('not_logged_in.html')
     current_user = User.query.filter_by(username=session['username']).first()
     current_user.last_activity = datetime.utcnow()
     game_id = data['game_id']
@@ -577,8 +661,28 @@ def leave_game(data):
         game.remove_player(sid)
         leave_room(game_id)
         if game.get_players_length() == 0:
-            del games_tici_tac[game_id]  # Remove game if no players left
+            del games_tici_tac[game_id]  
         emit('left_game', room=sid)
+
+
+@app.route('/topup', methods=['GET', 'POST'])
+def topup():
+    if 'username' not in session:
+        return render_template('not_logged_in.html')
+    user = session['username']
+    current_user = User.query.filter_by(username=session['username']).first()
+    current_user.last_activity = datetime.utcnow()
+    
+    if request.method == 'POST':
+        amount = int(request.form.get('amount', 0))
+        if amount > 0:
+            current_user.money += amount
+            db.session.commit()
+            socketio.emit('topup_notification', {'message': 'Your money has been topped up.'}, room=current_user.id)
+        else:
+            socketio.emit('topup_notification', {'message': 'Your money has been not topped up.'}, room=current_user.id)
+
+    return render_template('balance.html', user=current_user, user_name=user, user_profile_url = url_for('profile', username=user), im_money = current_user.money >10)
 
 if __name__ == '__main__':
     thread = threading.Thread(target=check_inactivity)
