@@ -3,27 +3,44 @@
 <head>
     <title>Chat App</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
-    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+        h2 {
+            margin-top: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .logout-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
 </head>
-<script type="text/javascript" charset="utf-8">
-    var socket = io();
-    socket.emit('check_inactivity'); // Emit check_inactivity event to start the inactivity check
-    
-    socket.on('inactive_warning', function(data) {
-        console.log('Received inactive warning:', data.message);
-        // Display inactive warning message
-    });
-    
-    socket.on('force_logout', function(data) {
-        console.log('Received force logout:', data.message);
-        // Display force logout message
-    });
-</script>
 <body>
-
     <h1>Welcome, <a href="{{ url_for('profile', username=username) }}">{{ username }}</a>!</h1>
-   
-    <p><a href="{{ url_for('forum') }}">Go to Forum</a></p>
+    <p><a href="{{ url_for('home') }}">Go to Forum</a></p>
     
     <h2>Active Users:</h2>
     <ul>
@@ -31,67 +48,34 @@
             <li><a href="{{ user.profile_url }}">{{ user.username }}</a></li>
         {% endfor %}
     </ul>
+
+    <h2>All Users:</h2>
+    <ul>
+        {% for user in all_users %}
+            <li><a href="{{ user.profile_url }}">{{ user.username }}</a></li>
+        {% endfor %}
+    </ul>
     
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    <p class="logout-link"><a href="{{ url_for('logout') }}">Logout</a></p>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
+    <script type="text/javascript" charset="utf-8">
         $(document).ready(function(){
-
             var socket = io();
 
-         
+            // Emit check_inactivity event to start the inactivity check
+            socket.emit('check_inactivity');
+
+            // Listen for inactivity warning
             socket.on('inactive_warning', function(data) {
                 alert(data.message); 
             });
 
-            
+            // Listen for force logout
             socket.on('force_logout', function(data) {
                 alert(data.message); 
-                
+                // Optional: Redirect to login page or any other action on logout
             });
         });
     </script>
 </body>
-<style>body {
-    font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
-    margin: 0;
-    padding: 0;
-}
-
-h1 {
-    text-align: center;
-    margin-top: 20px;
-}
-
-h2 {
-    margin-top: 20px;
-}
-
-ul {
-    list-style-type: none;
-    padding: 0;
-}
-
-li {
-    margin-bottom: 10px;
-}
-
-a {
-    color: #007bff;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-.logout-link {
-    text-align: center;
-    margin-top: 20px;
-}
-</style>
-
 </html>

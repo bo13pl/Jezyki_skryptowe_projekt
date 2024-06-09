@@ -23,8 +23,17 @@ app.static_folder = 'static'
 migrate = Migrate(app, db)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# Create tables
+with app.app_context():
+    db.create_all()
+
+# Path to store encrypted messages
+messages_file_path = 'forum_messages.json'
+
 # Generate a key for encryption if not already present
 encryption_key_path = 'encryption_key.key'
+
+
 if not os.path.exists(encryption_key_path):
     key = Fernet.generate_key()
     with open(encryption_key_path, 'wb') as key_file:
@@ -54,12 +63,7 @@ class User(db.Model):
         self.gender = gender
         self.money = 1000                           #start balance
 
-# Create tables
-with app.app_context():
-    db.create_all()
 
-# Path to store encrypted messages
-messages_file_path = 'forum_messages.json'
 
 def read_messages():
     if os.path.exists(messages_file_path):
@@ -172,12 +176,14 @@ def index():
     if 'username' in session:
         active_users = User.query.filter_by(is_active=True).all()
         current_user = User.query.filter_by(username=session['username']).first()
+        all_users = User.query.all()
         if current_user:
             current_user.last_activity = datetime.utcnow()
             db.session.commit()
             return render_template('index.html', 
                                    username=session['username'], 
-                                   active_users=[{'username': user.username, 'profile_url': url_for('profile', username=user.username)} for user in active_users])
+                                   active_users=[{'username': user.username, 'profile_url': url_for('profile', username=user.username)} for user in active_users],
+                                   all_users=[{'username': user.username, 'profile_url': url_for('profile', username=user.username)} for user in all_users])
     return render_template('not_logged_in.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -272,7 +278,7 @@ def check_inactivity():
             for user in inactive_warning_users:
                 if user not in sended:
                     sended.append(user)
-                    socketio.emit('inactive_warning', {'message': f'You, {user.username}, will be logged out due to inactivity in 1 minute'}, room=user.username)
+                    socketio.emit('inactive_warning', {'message': f'You, {user.username}, will be logged out due to inactivity'}, room=user.username)
 
             time.sleep(60)
 
