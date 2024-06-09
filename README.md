@@ -1,12 +1,49 @@
 
 # Server for forum and games
 
-This server serves requests from users and responds with pages depending on the user's status. Users can register or log in if they are already in the server's database. The database is organized with SQLite and stores basic information about the users.
+Chat App is a simple web application built using Flask, Socket.io, and jQuery. It allows users to chat in real-time and provides features such as inactivity warnings and forced logouts.
 
-After logging in, users can send messages to the forum or directly to other people. Messages are stored in one place with basic encryption. Users can also receive messages from other users.
+## Features
 
-The program includes a Tic-Tac-Toe game where users can play with a basic AI or another user. To start playing, you need to know the ID of the game. To start a game with the AI, you just need to click on the game or use the game ID with "ai".
+- Real-time chat functionality
+- Inactivity warning system
+- Forced logout mechanism
+- User authentication and session management
 
-Additionally, there is a Blackjack game where users can play with a dealer. You will be playing for money, but if your wallet balance falls below 10, you will be automatically redirected to a page to add more money.
+## Technologies Used
 
-If a user is inactive, a logout process will start with a warning about the inactivity.
+- Python (Flask)
+- JavaScript (Socket.io, jQuery)
+- HTML
+- CSS
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/your_username/chat-app.git
+
+## Installation
+
+1. Install dependencies:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+2. Run the application:
+
+    ```bash
+    python app.py
+    ```
+
+3. Open http://localhost:5000 in your web browser.
+
+## Usage
+
+- Register or log in to the application.
+- Start chatting with other users in real-time.
+- Receive inactivity warnings if idle for a specified period.
+- Get forcefully logged out if inactive for too long.
+
