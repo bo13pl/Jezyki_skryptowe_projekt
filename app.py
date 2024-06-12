@@ -22,7 +22,8 @@ app.static_folder = 'templates\cards'
 app.static_folder = 'static'
 migrate = Migrate(app, db)
 socketio = SocketIO(app, cors_allowed_origins="*")
-
+games = []
+games_tici_tac = {}
 # Create tables
 with app.app_context():
     db.create_all()
@@ -89,6 +90,15 @@ def update_last_activity():
 
 @app.route('/profile/<username>', methods=['GET', 'POST'])
 def profile(username):
+    """
+    Handles requests to view and update user profiles.
+
+    Parameters:
+        username (str): The username of the profile being viewed or updated.
+
+    Returns:
+        str or render_template: Returns a rendered template for viewing or updating the user profile. Returns a "User not found" message if the requested user does not exist.
+    """
     user = User.query.filter_by(username=username).first()
     if not user:
         return "User not found", 404
@@ -128,6 +138,12 @@ def profile(username):
 
 @app.route('/')
 def home():
+    """
+    Renders the home page.
+
+    Returns:
+        render_template: Returns the rendered template for the home page, either for logged in or not logged in users.
+    """
     active_users = User.query.filter_by(is_active=True).all()
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
@@ -143,6 +159,12 @@ def home():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    Handles user login.
+
+    Returns:
+        render_template: Returns the rendered template for the login page. If the user is authenticated, redirects to the home page.
+    """
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -162,6 +184,12 @@ def login():
 
 @app.route('/logout')
 def logout():
+    """
+    Handles user logout.
+
+    Returns:
+        redirect: Redirects the user to the home page after logout.
+    """
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
         if user:
@@ -173,6 +201,12 @@ def logout():
 
 @app.route('/index')
 def index():
+    """
+    Renders the index page.
+
+    Returns:
+        render_template: Returns the rendered template for the index page, either for logged in or not logged in users.
+    """
     if 'username' in session:
         active_users = User.query.filter_by(is_active=True).all()
         current_user = User.query.filter_by(username=session['username']).first()
@@ -188,6 +222,12 @@ def index():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """
+    Handles user registration.
+
+    Returns:
+        render_template or redirect: Returns the rendered template for the registration page if the request method is GET. If the registration is successful, redirects the user to the home page.
+    """
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -206,6 +246,12 @@ def register():
     return render_template('register.html')
 @app.route('/forum', methods=['GET', 'POST'])
 def forum():
+    """
+    Renders the forum page and handles posting messages.
+
+    Returns:
+        render_template: Returns the rendered template for the forum page, either for logged in or not logged in users.
+    """
     if 'username' in session:
         selected_forum = request.args.get('selected_forum', 'Forum1')
         messages = read_messages()
@@ -235,6 +281,12 @@ def forum():
 
 @socketio.on('connect')
 def handle_connect():
+    """
+    Handles a client connecting to the socket.
+
+    Emits:
+        'inactive_warning': Emits an inactive warning message to users who are about to be logged out due to inactivity.
+    """
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
         if user:
@@ -245,6 +297,16 @@ def handle_connect():
 
 @socketio.on('message')
 def handle_message(data):
+    """
+    Handles sending messages through the socket.
+
+    Parameters:
+        data (dict): A dictionary containing message data.
+
+    Emits:
+        'new_message': Emits a new message to all users in the room.
+        'message': Emits a message to a specific user.
+    """
     if 'username' in session:
         recipient = data.get('recipient')
         message = data['message']
@@ -267,6 +329,12 @@ def handle_message(data):
 
 @socketio.on('check_inactivity')
 def check_inactivity():
+    """
+    Periodically checks for user inactivity and emits warnings to inactive users.
+
+    Emits:
+        'inactive_warning': Emits an inactive warning message to users who are about to be logged out due to inactivity.
+    """
     while True:
         with app.app_context():
             now = datetime.utcnow()
@@ -295,6 +363,16 @@ def check_inactivity():
 
 @app.route('/forum/<username1>/<username2>', methods=['GET', 'POST'])
 def chat_priv(username1, username2):
+    """
+    Renders the private chat page and handles posting messages.
+
+    Parameters:
+        username1 (str): The username of the first participant in the private chat.
+        username2 (str): The username of the second participant in the private chat.
+
+    Returns:
+        render_template: Returns the rendered template for the private chat page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     # Sort usernames to ensure consistent URL structure
@@ -344,9 +422,18 @@ def chat_priv(username1, username2):
                                ],
                                selected_forum=selected_forum)
 
-games = []
+
 
 def find_latest_game_by_player(player_name):
+    """
+    Finds the latest game associated with a player.
+
+    Parameters:
+        player_name (str): The username of the player.
+
+    Returns:
+        dict or None: Returns the latest game session dictionary associated with the player if found, otherwise returns None.
+    """
     filtered_games = [game for game in games if game['player'] == player_name]
     if not filtered_games:
         return None
@@ -355,6 +442,12 @@ def find_latest_game_by_player(player_name):
 
 @app.route('/blackjack/start_game', methods=['POST'])
 def start_game():
+    """
+    Starts a new game of blackjack.
+
+    Returns:
+        render_template: Returns the rendered template for the blackjack game page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     
@@ -401,6 +494,12 @@ def start_game():
 
 @app.route('/blackjack', methods=['GET', 'POST'])
 def blackjack():
+    """
+    Renders the blackjack game page and handles bet placement.
+
+    Returns:
+        render_template: Returns the rendered template for the blackjack game page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
         
@@ -436,6 +535,12 @@ def blackjack():
 
 @app.route('/blackjack/hit', methods=['POST'])
 def blackjack_hit():
+    """
+    Handles a player choosing to hit in the blackjack game.
+
+    Returns:
+        render_template: Returns the rendered template for the blackjack game page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     user = session['username']
@@ -471,6 +576,12 @@ def blackjack_hit():
 
 @app.route('/blackjack/stand', methods=['POST'])
 def blackjack_stand():
+    """
+    Handles a player choosing to stand in the blackjack game.
+
+    Returns:
+        render_template: Returns the rendered template for the blackjack game page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     user = session['username']
@@ -504,6 +615,12 @@ def blackjack_stand():
 
 @app.route('/blackjack/split', methods=['POST'])
 def blackjack_split():
+    """
+    Handles a player choosing to split in the blackjack game.
+
+    Returns:
+        render_template: Returns the rendered template for the blackjack game page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     user = session['username']
@@ -528,10 +645,16 @@ def blackjack_split():
         db.session.commit()
         return render_template('blackjack.html', user_name=user, player_hands=[{'hand':card.get_cards(), 'value': card.get_value()} for card in game.player_hands], dealer=game.dealer_hand.value,
                                 dealer_hand=game.dealer_hand.get_cards(), enumerate=enumerate, num_of_hands = len(game_session['winner']), user_profile_url = url_for('profile', username=user), user_money = current_user.money, im_money=True, bet = money)
-games_tici_tac = {}
+
 
 @app.route('/tictactoe')
 def tictactoe():
+    """
+    Renders the tic-tac-toe game page.
+
+    Returns:
+        render_template: Returns the rendered template for the tic-tac-toe game page.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     current_user = User.query.filter_by(username=session['username']).first()
@@ -540,6 +663,18 @@ def tictactoe():
     return render_template('tictactoe.html')
 @socketio.on('join_game')
 def join_game(data):
+    """
+    Handles a player joining a game.
+    
+    Parameters:
+        data (dict): A dictionary containing game_id.
+    
+    Emits:
+        'redirect': Redirects to login page if the user is not in session.
+        'game_started': Notifies all players in the room that the game has started, providing the game board and current turn.
+        'no_permission': Notifies the user if they do not have permission to join the game.
+        'game_full': Notifies the user if the game is already full.
+    """
     if 'username' not in session:
         emit('redirect', {'url': url_for('login')})
         return
@@ -575,6 +710,19 @@ def join_game(data):
 
 @socketio.on('make_move')
 def handle_make_move(data):
+    """
+    Handles a player making a move in the game.
+    
+    Parameters:
+        data (dict): A dictionary containing game_id and move.
+    
+    Emits:
+        'redirect': Redirects to login page if the user is not in session.
+        'move_made': Notifies all players in the room that a move has been made, providing the game board, move, letter, and current turn.
+        'game_won': Notifies all players in the room if the game has been won, providing the winner.
+        'game_tied': Notifies all players in the room if the game is tied.
+        'invalid_move': Notifies the user if the move is invalid.
+    """
     if 'username' not in session:
         emit('redirect', {'url': url_for('login')})
         return
@@ -644,6 +792,15 @@ def handle_make_move(data):
 
 @socketio.on('replay_game')
 def handle_replay_game(data):
+    """
+    Handles a player requesting to replay the game.
+    
+    Parameters:
+        data (dict): A dictionary containing game_id.
+    
+    Emits:
+        'game_started': Notifies all players in the room that the game has been reset, providing the game board and current turn.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     current_user = User.query.filter_by(username=session['username']).first()
@@ -656,6 +813,15 @@ def handle_replay_game(data):
 
 @socketio.on('leave_game')
 def leave_game(data):
+    """
+    Handles a player leaving the game.
+    
+    Parameters:
+        data (dict): A dictionary containing game_id.
+    
+    Emits:
+        'left_game': Notifies the user that they have left the game.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     current_user = User.query.filter_by(username=session['username']).first()
@@ -673,6 +839,19 @@ def leave_game(data):
 
 @app.route('/topup', methods=['GET', 'POST'])
 def topup():
+    """
+    Handles user top-up request.
+    
+    Methods:
+        GET: Renders the balance page with user details.
+        POST: Processes the top-up request and updates the user's balance.
+    
+    Emits:
+        'topup_notification': Notifies the user whether the top-up was successful or not.
+    
+    Returns:
+        Template: Renders the balance.html template with user details.
+    """
     if 'username' not in session:
         return render_template('not_logged_in.html')
     user = session['username']
