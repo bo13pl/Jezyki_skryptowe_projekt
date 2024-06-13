@@ -26,19 +26,14 @@ Chat App is a simple web application built using Flask, Socket.io, and jQuery. I
 
 ## Installation
 
-1. Install dependencies:
 
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-2. Run the application:
+1. Run the application:
 
     ```bash
     python app.py
     ```
 
-3. Open http://localhost:5000 in your web browser.
+2. Open http://localhost:5000 in your web browser.
 
 ## Usage
 
